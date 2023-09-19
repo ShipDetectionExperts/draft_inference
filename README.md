@@ -4,6 +4,8 @@ A sample jupyter notebook for showcasing the inference capabilities of the vesse
 
 # Simple tutorial usage
 
+0. Clone or fork this repository
+
 1. Create a virtual environment
 
 ```bash
