@@ -10,6 +10,12 @@ import datetime
 import math
 import tifffile
 from PIL import Image
+from pystac import Catalog, Collection, Item, Asset
+from pystac.extensions.projection import ProjectionExtension
+from pystac.extensions.eo import EOExtension
+from pystac.extensions.file import FileExtension
+import geojson
+import json
 
 from sentinelhub import (
     BBox,
@@ -21,6 +27,8 @@ from sentinelhub import (
     CRS,
     DataCollection,
     MimeType,
+    bbox_to_dimensions,
+    SentinelHubBYOC
 )
 
 import numpy as np
@@ -49,52 +57,8 @@ TIME= None
 MAX_CC = None
 THRESHOLD = None
 
-
-
-SERVER_URL = 'https://services.sentinel-hub.com/ogc/wms/'
-
-
-def request_data(SERVER_URL, INSTANCE_ID, BBOX, TIME, MAX_CC, max_retries=3, retry_delay=5):
-    '''
-    Function to query and request data from Sentinel Hub WMS based on parsed arguments
-    SERVER_URL: Sentinel Hub WMS server URL (fixed value)
-    INSTANCE_ID: Sentinel Hub instance ID (from parsed arguments)
-    BBOX: Bounding box in the format minx,miny,maxx,maxy (from parsed arguments)
-    TIME: Time range of the image in the format YYYY-MM-DD/YYYY-MM-DD (from parsed arguments)
-    MAX_CC: Maximum cloud cover percentage (from parsed arguments)
-    '''
-    max_retries = 3
-    retry_delay = 3
-
-    wms_query = f'{SERVER_URL}{INSTANCE_ID}?REQUEST=GetMap&CRS=CRS:84&BBOX={BBOX}&LAYERS=L2A-4-BAND&WIDTH=512&HEIGHT=343&FORMAT=image/tiff&TIME={TIME}&MAXCC={MAX_CC}'
-    
-    print(wms_query)
-    for i in range(max_retries):
-        try:
-            response = requests.get(wms_query)
-
-        except HTTPError as e:
-            print(f'HTTP error occurred: {e}')
-            if i < max_retries - 1:
-                print(f"Retrying in {retry_delay} seconds...")
-                time.sleep(retry_delay)
-            else:
-                raise Exception(f"Failed to request data from Sentinel Hub WMS after {max_retries} retries. Last error: {e}")
-
-        if response.status_code == 200:
-            print("Data request successful.")
-            print(response.headers)
-            return response.content
-        else:
-            if i < max_retries - 1:
-                print(f"Retrying in {retry_delay} seconds...")
-                time.sleep(retry_delay)
-            else:
-                raise Exception(f"Failed to request data from Sentinel Hub WMS after {max_retries} retries. Status code: {response.status_code}")
-            
 def request_data_sh(CLIENT_ID, CLIENT_SECRET,BBOX, TIME,MAX_CC):
 
-    #Set up the SH config
     sh_client_id = CLIENT_ID
     sh_client_secret = CLIENT_SECRET
     
@@ -112,24 +76,38 @@ def request_data_sh(CLIENT_ID, CLIENT_SECRET,BBOX, TIME,MAX_CC):
     config.sh_client_secret = sh_client_secret
     config.sh_base_url = 'https://services.sentinel-hub.com'
 
-    custom_evalscript = """
+
+
+    custom_evalscript ='''
     //VERSION=3
 
-    function setup() {
-        return {
-            input: [{
-                bands: ["B02", "B03", "B04", "B08"]
-            }],
-            output: {
-                bands: 4
-            }
-        };
-    }
+function setup() {
+  return {
+    input: [
+      {
+        bands: ["B02","B03","B04","B08"],      
+        units: "REFLECTANCE",            
+      }
+    ],
+    output: [
+      {
+        id: "default",
+        bands: 4,
+        sampleType: "UINT16",        
+      },    
+    ],
+    mosaicking: "SIMPLE",
+  };
+}
 
-    function evaluatePixel(sample) {
-        return [sample.B04, sample.B03, sample.B02, sample.B08];
-    }
-    """
+
+function evaluatePixel(sample) {
+  return [2.5 * sample.B04, 2.5 * sample.B03, 2.5 * sample.B02];
+}
+
+'''
+
+
 
     catalog = SentinelHubCatalog(config=config)
  
@@ -139,6 +117,7 @@ def request_data_sh(CLIENT_ID, CLIENT_SECRET,BBOX, TIME,MAX_CC):
 
     print(time_interval)
     bbox=BBox(bbox=BBOX, crs=CRS.WGS84)
+    image_size = bbox_to_dimensions(bbox, resolution=10)
   
     search_iterator = catalog.search(
         DataCollection.SENTINEL2_L2A,
@@ -147,7 +126,6 @@ def request_data_sh(CLIENT_ID, CLIENT_SECRET,BBOX, TIME,MAX_CC):
         filter=f'eo:cloud_cover < {MAX_CC}',
         fields= {"include": ["id","properties.datetime", "properties.cloudCover"], "exclude": []},
     )
-
 
     results = list(search_iterator)
     print(f"Found {len(results)} results")
@@ -165,10 +143,11 @@ def request_data_sh(CLIENT_ID, CLIENT_SECRET,BBOX, TIME,MAX_CC):
                 )
             ],
             responses=[
-                SentinelHubRequest.output_response('default', MimeType.TIFF)
+                SentinelHubRequest.output_response('default', MimeType.TIFF),
             ],
             bbox=bbox,
-            config=config
+            size=image_size,
+            config=config,
         )
 
         process_requests.append(request)
@@ -176,28 +155,75 @@ def request_data_sh(CLIENT_ID, CLIENT_SECRET,BBOX, TIME,MAX_CC):
         client = SentinelHubDownloadClient(config=config)
         download_requests = [request.download_list[0] for request in process_requests]
         data = client.download(download_requests, max_threads=3)
-
-        np.save('image.npy', data)
-
-        print("Data downloaded")
-
-        datacheck = np.load('image.npy')
-
-        blue = Image.fromarray(datacheck[0][:, :, 0])
-        green = Image.fromarray(datacheck[0][:, :, 1])
-        red = Image.fromarray(datacheck[0][:, :, 2])
-        nir = Image.fromarray(datacheck[0][:, :, 3])
-        rgb_image = np.stack((datacheck[0][:, :, 0], datacheck[0][:, :, 1], datacheck[0][:, :, 2]), axis=-1)
-        pil_image = Image.fromarray(rgb_image)
-
-
-        pil_image.save('image.tiff')
-        blue.save('blue.tiff')
-        green.save('green.tiff')
-        red.save('red.tiff')
-        nir.save('nir.tiff')
+        print(f"Data downloaded: {len(data)} items")
 
         return data
+
+def output_geojson(bounding_boxes):
+    '''
+    Takes the ship detector output bounding boxes and converts
+    them to a GeoJSON file
+    '''
+    features = []
+
+    for bounding_box in bounding_boxes:
+        x1, y1, x2, y2 = bounding_box
+        geometry = geojson.Polygon([[(x1, y1), (x1, y2), (x2, y2), (x2, y1), (x1, y1)]])
+        feature = geojson.Feature(geometry=geometry)
+        features.append(feature)
+
+    feature_collection = geojson.FeatureCollection(features)
+
+    with open('vessel-detection-output.geojson', 'w') as f:
+        geojson.dump(feature_collection, f)
+
+    return feature_collection
+
+
+    
+
+
+def add_to_stac_catalog(feature_collection, catalog_path):
+
+    item = Item(id='vessel-detection-output',
+                geometry=feature_collection['features'][0]['geometry'],
+                bbox=feature_collection['features'][0]['bbox'],
+                datetime=datetime.datetime.utcnow(),
+                properties={})
+
+    # Add the GeoJSON feature collection as an asset to the STAC Item
+    asset = Asset(href='vessel-detection-output.geojson',
+                  media_type='application/geo+json',
+                  roles=['data'])
+
+    item.add_asset('geojson', asset)
+
+
+    # Add extensions to the STAC Item
+    ProjectionExtension.add_to(item)
+    EOExtension.add_to(item)
+    FileExtension.add_to(item)
+
+    # Create a STAC Catalog if it doesn't exist
+    if not os.path.exists(catalog_path):
+        catalog = Catalog(id='my-catalog', description='My STAC Catalog')
+        catalog.normalize_and_save(catalog_path)
+    else:
+        catalog = Catalog.from_file(catalog_path)
+
+    # Add the STAC Item to the Catalog
+    collection_id = 'my-collection'
+    if collection_id not in catalog.get_collection_ids():
+        collection = Collection(id=collection_id, description='My STAC Collection')
+        catalog.add_child(collection)
+    else:
+        collection = catalog.get_collection(collection_id)
+    collection.add_item(item)
+
+    # Save the updated STAC Catalog
+    cwd = os.getcwd()
+    output_file = os.path.join(cwd, "catalog.json")
+    catalog.normalize_and_save(output_file, catalog_type=CatalogType.SELF_CONTAINED)
 
 
 def calculate_ndwi(nir_band, green_band):
@@ -390,13 +416,19 @@ def ship_detector(data, threshold, min_size_threshold=10):
     red = red / red_max
     
     nir_max = np.max(nir)
-    nir = nir / nir_max
+    if nir_max != 0:
+        nir = nir / nir_max
 
     stored_NDWI = calculate_ndwi(nir,green)
     stored_spatio_temp = spatiotemp_img(blue,red)
     stored_rgb =  true_color(red,green,blue)
 
     bands = [red, green, blue, stored_NDWI, nir, stored_spatio_temp]
+
+    print(f"Blue band range: ({np.min(blue)}, {np.max(blue)})")
+    print(f"Green band range: ({np.min(green)}, {np.max(green)})")
+    print(f"Red band range: ({np.min(red)}, {np.max(red)})")
+    print(f"NIR band range: ({np.min(nir)}, {np.max(nir)})")
     
         # Determine the shape of the first band
     target_shape = bands[0].shape[:2]
@@ -489,15 +521,12 @@ def ship_detector(data, threshold, min_size_threshold=10):
     
     # Count the number of bounding boxes (vessel entities)
     num_vessels = len(bounding_boxes)
-    
-    # Plot the overlayed RGB image with labeled vessels and bounding boxes
-    plt.figure(figsize=(10, 10))
-    plt.imshow(overlay_rgb)  # Convert BGR to RGB for displaying with matplotlib
-    plt.title(f'RGB Image with {num_vessels} Vessel Entities and Bounding Boxes')
-    plt.axis('off')
-    plt.show()
-    
+
     print(f'Number of Vessel Entities: {num_vessels}')
+    
+    return bounding_boxes
+    
+
            
 
            

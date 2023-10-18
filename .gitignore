@@ -1,2 +1,9 @@
 ship-detection/
-__pychache__/
+__pycache__/
+
+blue.tiff
+green.tiff
+red.tiff
+nir.tiff
+image.tiff
+image.npy

@@ -8,6 +8,7 @@ from sentinelhub import (
     BBox,
     CRS,
     DataCollection,
+    SentinelHubCatalog,
     DownloadFailedException,
     MimeType,
     SentinelHubRequest,
@@ -35,7 +36,7 @@ TIME= None
 MAX_CC = None
 THRESHOLD = None
 
-#TODO: FIX THE SENTINELHUB INTEGRATION TO SOMEHOW ACCEPT DYNAMIC IMAGE SIZE BASED ON THE INPUT BBOX
+
 #TODO: CHECK IF THE BANDS ARE BEING CORRECTLY LOADED AND USED BY THE SHIP DETECTION FUNCTION
 
 def setup_argparse():
