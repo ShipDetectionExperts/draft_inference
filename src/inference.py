@@ -20,7 +20,7 @@ relative_paths = ["./utils", "./models", "./draft_model"]
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.extend(os.path.join(current_dir, rel_path) for rel_path in relative_paths)
 
-from utils import request_data_sh, ship_detector
+from utils import request_data_sh, ship_detector, output_geojson, add_to_stac_catalog
 from utils import *
 from models import *
 
@@ -110,8 +110,11 @@ def main():
 
     data = request_data_sh(CLIENT_ID, CLIENT_SECRET, BBOX, TIME, MAX_CC)
 
-    # run the ship detector function on the downloaded data
-    ship_detector(data, THRESHOLD, min_size_threshold=10)
+    bounding_boxes = ship_detector(data, THRESHOLD, min_size_threshold=10)
+
+    feature_collection = output_geojson(bounding_boxes)
+
+    add_to_stac_catalog(feature_collection)
 
 
 if __name__ == "__main__":

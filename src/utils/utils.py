@@ -1,14 +1,8 @@
 import os
 import argparse
-import time
-import urllib
 from urllib.error import HTTPError
-import requests
 import time
-import logging
 import datetime
-import math
-import tifffile
 from PIL import Image
 from pystac import Catalog, Collection, Item, Asset
 from pystac.extensions.projection import ProjectionExtension
@@ -22,13 +16,11 @@ from sentinelhub import (
     SentinelHubCatalog,
     SentinelHubRequest,
     SentinelHubDownloadClient,
-    Geometry,
     SHConfig,
     CRS,
     DataCollection,
     MimeType,
     bbox_to_dimensions,
-    SentinelHubBYOC,
 )
 
 import numpy as np
@@ -131,6 +123,7 @@ function evaluatePixel(sample) {
     process_requests = []
 
     for result in results:
+        print(f"Processing result with ID {result['id']}")
         request = SentinelHubRequest(
             evalscript=custom_evalscript,
             input_data=[
@@ -154,67 +147,70 @@ function evaluatePixel(sample) {
         download_requests = [request.download_list[0] for request in process_requests]
         data = client.download(download_requests, max_threads=3)
         print(f"Data downloaded: {len(data)} items")
+        for request in process_requests:
+            print(f"Processed request with ID {request.get_filename_list()}")
 
         return data
 
 
 def output_geojson(bounding_boxes):
-    """
-    Takes the ship detector output bounding boxes and converts
-    them to a GeoJSON file
+    features = []
+    for bbox in bounding_boxes:
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [bbox[0], bbox[1]],
+                    [bbox[2], bbox[1]],
+                    [bbox[2], bbox[3]],
+                    [bbox[0], bbox[3]],
+                    [bbox[0], bbox[1]]
+                ]]
+            },
+            "properties": {}
+        }
+        features.append(feature)
 
-    Dont bother with this Selim.
-    """
-    return
+    feature_collection = {
+        "type": "FeatureCollection",
+        "features": features
+    }
+
+    filename = f"detections-{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.geojson"
+    with open(filename, "w") as f:
+        json.dump(feature_collection, f)
+
+    return feature_collection
 
 
-def add_to_stac_catalog(feature_collection, catalog_path):
-    """
-    Dont bother with this Selim
-    """
+def add_to_stac_catalog(feature_collection):
 
-    item = Item(
-        id="vessel-detection-output",
-        geometry=feature_collection["features"][0]["geometry"],
-        bbox=feature_collection["features"][0]["bbox"],
-        datetime=datetime.datetime.utcnow(),
-        properties={},
-    )
-
-    # Add the GeoJSON feature collection as an asset to the STAC Item
-    asset = Asset(
-        href="vessel-detection-output.geojson",
-        media_type="application/geo+json",
-        roles=["data"],
-    )
-
-    item.add_asset("geojson", asset)
-
-    # Add extensions to the STAC Item
-    ProjectionExtension.add_to(item)
-    EOExtension.add_to(item)
-    FileExtension.add_to(item)
-
-    # Create a STAC Catalog if it doesn't exist
-    if not os.path.exists(catalog_path):
-        catalog = Catalog(id="my-catalog", description="My STAC Catalog")
-        catalog.normalize_and_save(catalog_path)
-    else:
+    catalog_path = os.path.join(os.getcwd())
+    if os.path.exists(catalog_path):
         catalog = Catalog.from_file(catalog_path)
+    else:
+        catalog = Catalog(id="vessel-detection-catalog", description="Catalog of vessel detection results")
+
+    # Create a new STAC Item for the GeoJSON FeatureCollection
+    item_id = f"vessel-detection-{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}"
+    item = Item(id=item_id, geometry=None, bbox=None, datetime=None)
+    item.add_asset(
+        "vessel-detection-output",
+        Asset(href="vessel-detection-output.geojson", media_type="application/geo+json")
+    )
+
+    # Add the GeoJSON FeatureCollection to the STAC Item
+    item.add_asset(
+        "vessel-detection-features",
+        Asset(href="vessel-detection-features.geojson", media_type="application/geo+json")
+    )
 
     # Add the STAC Item to the Catalog
-    collection_id = "my-collection"
-    if collection_id not in catalog.get_collection_ids():
-        collection = Collection(id=collection_id, description="My STAC Collection")
-        catalog.add_child(collection)
-    else:
-        collection = catalog.get_collection(collection_id)
-    collection.add_item(item)
+    catalog.add_item(item)
 
-    # Save the updated STAC Catalog
-    cwd = os.getcwd()
-    output_file = os.path.join(cwd, "catalog.json")
-    catalog.normalize_and_save(output_file, catalog_type=CatalogType.SELF_CONTAINED)
+    # Save the updated Catalog to disk
+    catalog.normalize_and_save(catalog_path, strategy="move")
 
 
 def calculate_ndwi(nir_band, green_band):
@@ -518,5 +514,7 @@ def ship_detector(data, threshold, min_size_threshold=10):
     num_vessels = len(bounding_boxes)
 
     print(f"Number of Vessel Entities: {num_vessels}")
+
+    print(bounding_boxes)
 
     return bounding_boxes
