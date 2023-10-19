@@ -1,8 +1,4 @@
 import os
-
-import logging
-logging.getLogger('absl').setLevel('ERROR')
-
 import numpy as np
 import tifffile
 from skimage import io as tiff
@@ -10,7 +6,10 @@ import matplotlib.pyplot as plt
 import random
 import rasterio
 import netCDF4 as nc
-
+from scipy.ndimage import label
+from scipy.ndimage import generate_binary_structure, binary_erosion
+import geopandas as gpd
+from shapely.geometry import box
 import tensorflow as tf
 import tensorrt
 from tensorflow.keras import models, layers, regularizers
@@ -191,7 +190,7 @@ def plot_tiled_dataset(tiled_dataset):
 
 
             
-def ship_detector(region_folder, threshold, min_size_threshold=10, file_format="netcdf"):
+def ship_detector(region_folder, threshold, min_size_threshold=2, kernel_erosion=3, file_format="netcdf", segmentation =False):
     
     band_names = ["B04","B03","B02", "B08"]
     
@@ -294,8 +293,8 @@ def ship_detector(region_folder, threshold, min_size_threshold=10, file_format="
     patches, updated_shape = inference_tiles(dataset, tile_size= 64)
 
         # Provide the path to the model file
-    model_path = 'draft_model/Multihead_Attention_UNet_model.h5'
-    model = tf.keras.models.load_model(model_path, compile=False)
+    model_path = 'drafts/best_Multihead_Attention_UNet_model/Multihead_Attention_UNet_model.h5'
+    model = tf.keras.models.load_model(model_path,custom_objects={"K": K}, compile=False)
 
     binary_masks = []
 
@@ -304,7 +303,8 @@ def ship_detector(region_folder, threshold, min_size_threshold=10, file_format="
 
         # Expand dimensions of the test image and make predictions
         test_img_input = np.expand_dims(test_img, 0)
-        prediction = (model.predict(test_img_input)[0, :, :, 0] > threshold).astype(np.uint8)
+        #tf.keras.utils.disable_interactive_logging()
+        prediction = (model.predict(test_img_input, verbose = 0)[0, :, :, 0] > threshold).astype(np.uint8)
 
         # Append the binary mask to the list
         binary_masks.append(prediction)
@@ -344,47 +344,97 @@ def ship_detector(region_folder, threshold, min_size_threshold=10, file_format="
     
     # Create a copy of the resized RGB image
     overlay_rgb = np.copy(cropped_rgb)
-
-    # Apply the binary mask to the copy, making ship pixels red
-    overlay_rgb[large_binary_mask == 1, :] = [255, 0, 0]  # Red color for ship pixels
-
-       # Find connected components and label them
+    
+     # Find connected components and label them
     _, labeled_mask = cv2.connectedComponents(large_binary_mask)
-    
-    # Filter out small components (adjust min_size_threshold as needed)
 
-    unique_labels, label_counts = np.unique(labeled_mask, return_counts=True)
-    for label in unique_labels:
-        if label_counts[label] < min_size_threshold:
-            labeled_mask[labeled_mask == label] = 0
+    if segmentation == True:
+        # Apply the binary mask to the copy, making ship pixels red
+        overlay_rgb[large_binary_mask == 1, :] = [255, 0, 0]  # Red color for ship pixels        
+        # Filter out small components (adjust min_size_threshold as needed)
     
-    # Find bounding boxes for the labeled vessels
-    bounding_boxes = []
-    for label in range(1, labeled_mask.max() + 1):  # Skip label 0 (background)
-        vessel_mask = (labeled_mask == label).astype(np.uint8)
-        contours, _ = cv2.findContours(vessel_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if contours:
-            x, y, w, h = cv2.boundingRect(contours[0])
-            bounding_boxes.append((x, y, x + w, y + h))
-    
-    # Draw bounding boxes on the overlayed RGB image
-    for x1, y1, x2, y2 in bounding_boxes:
-        cv2.rectangle(overlay_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw green bounding boxes
-    
-    # Count the number of bounding boxes (vessel entities)
-    num_vessels = len(bounding_boxes)
-    
-    # Plot the overlayed RGB image with labeled vessels and bounding boxes
-    plt.figure(figsize=(10, 10))
-    plt.imshow(overlay_rgb)  # Convert BGR to RGB for displaying with matplotlib
-    plt.title(f'RGB Image with {num_vessels} Vessel Entities and Bounding Boxes')
-    plt.axis('off')
-    plt.show()
-    
-    print(f'Number of Vessel Entities: {num_vessels}')
-           
+        unique_labels, label_counts = np.unique(labeled_mask, return_counts=True)
+        for label_mask in unique_labels:
+            if label_counts[label_mask] < min_size_threshold:
+                labeled_mask[labeled_mask == label_mask] = 0
+                # Create a structuring element for neighborhood connections
+        
+        structure = generate_binary_structure(2, kernel_erosion)
+        # Use binary_erosion to label connected components with neighborhood information
+        labeled_mask, num_components  = label(large_binary_mask, structure=structure)
+        
+        # Find bounding boxes for the labeled vessels
+        bounding_boxes = []
+        for label_mask in range(1, labeled_mask.max() + 1):  # Skip label 0 (background)
+            vessel_mask = (labeled_mask == label_mask).astype(np.uint8)
+            contours, _ = cv2.findContours(vessel_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                x, y, w, h = cv2.boundingRect(contours[0])
+                bounding_boxes.append((x, y, x + w, y + h))
+        
+        # Draw bounding boxes on the overlayed RGB image
+        for x1, y1, x2, y2 in bounding_boxes:
+            cv2.rectangle(overlay_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw green bounding boxes
+        
+        # Count the number of bounding boxes (vessel entities)
+        num_vessels = len(bounding_boxes)
+        
+        # Plot the overlayed RGB image with labeled vessels and bounding boxes
+        plt.figure(figsize=(10, 10))
+        plt.imshow(overlay_rgb)  # Convert BGR to RGB for displaying with matplotlib
+        plt.title(f'RGB Image with {num_vessels} Vessel Entities and Bounding Boxes')
+        plt.axis('off')
+        plt.show()
+        
+        print(f'Number of Vessel Entities: {num_vessels}')
+        
+    elif segmentation == False:
 
-           
+        # Filter out small components
+        unique_labels, label_counts = np.unique(labeled_mask, return_counts=True)
+        for label_mask in unique_labels:
+            if label_counts[label_mask] < min_size_threshold:
+                labeled_mask[labeled_mask == label_mask] = 0
+                
+        # Create a structuring element for neighborhood connections
+        structure = generate_binary_structure(2, kernel_erosion)
+        # Use binary_erosion to label connected components with neighborhood information
+        labeled_mask, num_components  = label(large_binary_mask, structure=structure)
+    
+        # Find bounding boxes for the labeled vessels
+        bounding_boxes = []
+        for label_mask in range(1, num_components + 1):  # Skip label 0 (background)
+            vessel_mask = (labeled_mask == label_mask).astype(np.uint8)
+            contours, _ = cv2.findContours(vessel_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                x, y, w, h = cv2.boundingRect(contours[0])
+                bounding_boxes.append((x, y, x + w, y + h))
+    
+        # Create a GeoDataFrame with bounding box polygons
+        gdf = gpd.GeoDataFrame(
+            {'geometry': [box(x1, y1, x2, y2) for x1, y1, x2, y2 in bounding_boxes]},
+            crs="EPSG:4326"  # Assuming WGS 84 coordinate reference system
+        )
+    
+        # Save the GeoDataFrame as a GeoJSON file
+        gdf.to_file('vessel_bounding_boxes.geojson', driver='GeoJSON')
+    
+        # Overlay the bounding boxes on the RGB image
+        overlay_rgb_with_boxes = np.copy(cropped_rgb)
+        for x1, y1, x2, y2 in bounding_boxes:
+            cv2.rectangle(overlay_rgb_with_boxes, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw green bounding boxes
+    
+        # Plot the overlayed RGB image with bounding boxes
+        plt.figure(figsize=(10, 10))
+        plt.imshow(overlay_rgb_with_boxes)
+        plt.title(f'RGB Image with Vessel Entities and Bounding Boxes')
+        plt.axis('off')
+        plt.show()
+    
+
+    return
+
+
             
                         
             
