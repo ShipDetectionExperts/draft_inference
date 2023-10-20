@@ -4,7 +4,7 @@ logging.getLogger('absl').setLevel('ERROR')
 
 from scipy.ndimage import label
 from scipy.ndimage import generate_binary_structure, binary_erosion
-
+import csv
 import numpy as np
 import tifffile
 from skimage import io as tiff
@@ -193,10 +193,13 @@ def plot_tiled_dataset(tiled_dataset):
     plt.tight_layout()
     plt.show()            
 
+def log_step_status(step_name, status, log_file):
+    with open(log_file, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([step_name, status])
 
 
 
-            
 def ship_detector(bbox, temporal_extent, threshold, min_size_threshold=2, kernel_erosion=3):
     from sentinelhub import (
     CRS,
@@ -210,44 +213,55 @@ def ship_detector(bbox, temporal_extent, threshold, min_size_threshold=2, kernel
     bbox_to_dimensions,
 )
     from sentinelhub import SHConfig
+    
+    log_file = 'processing_log.csv'
+
+    if os.path.isfile(log_file):
+        os.remove(log_file)
+
+    with open(log_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Step", "Status"])
 
     config = SHConfig()
-    
+
     config.sh_client_id = '4a1a2f5e-68c8-45bb-9658-1c3d97f83ba9'
     config.sh_client_secret = 'udBzznCtpu8Hbc7Rq5uAVAWsBetZrqhkDtMENAfV'
     config.save()
+
     if not config.sh_client_id or not config.sh_client_secret:
         print("Warning! To use Process API, please provide the credentials (OAuth client ID and client secret).")
-        
+        log_step_status("Sentinel Hub Configuration", "Failed", log_file)
+        return
+
     resolution = 10
     queried_bbox = BBox(bbox=bbox, crs=CRS.WGS84)
     queried_size = bbox_to_dimensions(queried_bbox, resolution=resolution)
 
     evalscript = """
     //VERSION=3
-function setup() {
-  return {
-    input: [
-      {
-        bands: ["B02","B03","B04","B08"],      
-        units: "DN",            
-      }
-    ],
-    output: [
-      {
-        id: "default",
-        bands: 4,
-        sampleType: "UINT16",        
-      },    
-    ],
-  };
-}
+    function setup() {
+        return {
+            input: [
+                {
+                    bands: ["B02", "B03", "B04", "B08"],
+                    units: "DN",
+                }
+            ],
+            output: [
+                {
+                    id: "default",
+                    bands: 4,
+                    sampleType: "UINT16",
+                },
+            ],
+        };
+    }
 
-
-function evaluatePixel(sample) {
-  return [sample.B04, sample.B03, sample.B02, sample.B08];
-}
-"""
+    function evaluatePixel(sample) {
+        return [sample.B04, sample.B03, sample.B02, sample.B08];
+    }
+    """
 
     request = SentinelHubRequest(
         evalscript=evalscript,
@@ -264,64 +278,72 @@ function evaluatePixel(sample) {
     )
 
     bands_queried = request.get_data()
-    red, green, blue, nir = np.split(bands_queried[0], 4, axis=2)
 
+    if bands_queried is None:
+        print("Failed to query data from Sentinel Hub.")
+        log_step_status("Query Data from Sentinel Hub", "Failed", log_file)
+        return
+
+    log_step_status("Query Data from Sentinel Hub", "Done", log_file)
+
+    red, green, blue, nir = np.split(bands_queried[0], 4, axis=2)
     red = red.squeeze()
     green = green.squeeze()
     blue = blue.squeeze()
     nir = nir.squeeze()
-    
+
     blue_max = np.max(blue)
     blue = blue / blue_max
-    
+
     green_max = np.max(green)
     green = green / green_max
-    
+
     red_max = np.max(red)
     red = red / red_max
-    
+
     nir_max = np.max(nir)
     nir = nir / nir_max
 
-    stored_NDWI = calculate_ndwi(nir,green)
-    stored_spatio_temp = spatiotemp_img(blue,red)
-    stored_rgb =  true_color(red,green,blue)
-    bands = [red, green, blue, stored_NDWI, nir, stored_spatio_temp]        
+    stored_NDWI = calculate_ndwi(nir, green)
+    stored_spatio_temp = spatiotemp_img(blue, red)
+    stored_rgb = true_color(red, green, blue)
+    bands = [red, green, blue, stored_NDWI, nir, stored_spatio_temp]
 
     dataset = []
     dataset.append(tuple(bands))
-    
-    patches, updated_shape = inference_tiles(dataset, tile_size= 64)
 
-        # Provide the path to the model file
-    model_path = 'draft_model/Multihead_Attention_UNet_model.h5'
-    model = tf.keras.models.load_model(model_path,custom_objects={"K": K}, compile=False)
+    log_step_status("Preprocessing", "Done", log_file)
+
+    patches, updated_shape = inference_tiles(dataset, tile_size=64)
+
+     # Provide the path to the model file
+    model_path = 'drafts/best_Multihead_Attention_UNet_model/Multihead_Attention_UNet_model.h5'
+    model = tf.keras.models.load_model(model_path, custom_objects={"K": K}, compile=False)
 
     binary_masks = []
 
     for idx, patch in enumerate(patches):
         test_img = patch
-
-        # Expand dimensions of the test image and make predictions
+         # Expand dimensions of the test image and make predictions
         test_img_input = np.expand_dims(test_img, 0)
-        prediction = (model.predict(test_img_input, verbose = 0)[0, :, :, 0] > threshold).astype(np.uint8)
+        prediction = (model.predict(test_img_input, verbose=0)[0, :, :, 0] > threshold).astype(np.uint8)
 
         # Append the binary mask to the list
         binary_masks.append(prediction)
-        
-        #Print a consolidated progress line
+
+         #Print a newline character to separate the progress line from other output
         print(f'{idx + 1}/{len(patches)} [===========================]', end='\r')
 
-    #Print a newline character to separate the progress line from other output
+     #Print a newline character to separate the progress line from other output
     print()
-    
-    tile_size = 64 
-     
-    large_binary_mask = np.zeros(updated_shape, dtype=np.uint8)
+    log_step_status("Predictions", "Done", log_file)
 
+    tile_size = 64
+    large_binary_mask = np.zeros(updated_shape, dtype=np.uint8)
+    
     num_tiles_x = updated_shape[1] // tile_size
 
-    # Loop through the binary masks and populate the large binary mask
+        # Loop through the binary masks and populate the large binary mask
     for idx, mask_tile in enumerate(binary_masks):
         # Calculate the tile's position in the reassembled binary mask
         tile_y = idx // num_tiles_x  # Calculate tile index in y direction
@@ -335,7 +357,9 @@ function evaluatePixel(sample) {
 
         # Place the mask tile in the corresponding position
         large_binary_mask[start_y:end_y, start_x:end_x] = mask_tile
-  
+
+    log_step_status("Reassembly of binary mask", "Done", log_file)
+
     target_height, target_width = large_binary_mask.shape[:2]
 
     # Crop stored_rgb to match the target size
@@ -346,20 +370,25 @@ function evaluatePixel(sample) {
 
      # Find connected components and label them
     _, labeled_mask = cv2.connectedComponents(large_binary_mask)
-
+    
     # Filter out small components
     unique_labels, label_counts = np.unique(labeled_mask, return_counts=True)
     for label_mask in unique_labels:
         if label_counts[label_mask] < min_size_threshold:
             labeled_mask[labeled_mask == label_mask] = 0
-            
+
+    log_step_status("Small components filtered out", "Done", log_file)
+
     # Create a structuring element for neighborhood connections
     structure = generate_binary_structure(2, kernel_erosion)
-    # Use binary_erosion to label connected components with neighborhood information
-    labeled_mask, num_components  = label(large_binary_mask, structure=structure)
+     # Use binary_erosion to label connected components with neighborhood information
+    labeled_mask, num_components = label(large_binary_mask, structure=structure)
+
+    log_step_status("Binary erosion", "Done", log_file)
 
     # Find bounding boxes for the labeled vessels
     bounding_boxes = []
+
     for label_mask in range(1, num_components + 1):  # Skip label 0 (background)
         vessel_mask = (labeled_mask == label_mask).astype(np.uint8)
         contours, _ = cv2.findContours(vessel_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -367,6 +396,7 @@ function evaluatePixel(sample) {
             x, y, w, h = cv2.boundingRect(contours[0])
             bounding_boxes.append((x, y, x + w, y + h))
 
+    log_step_status("Bounding boxes creation", "Done", log_file)
     num_vessels = len(bounding_boxes)
 
     # Create a GeoDataFrame with bounding box polygons
@@ -378,38 +408,19 @@ function evaluatePixel(sample) {
     # Save the GeoDataFrame as a GeoJSON file
     gdf.to_file('vessel_bounding_boxes.geojson', driver='GeoJSON')
 
+    log_step_status("GeoJSON file", "Done", log_file)
+
     # Overlay the bounding boxes on the RGB image
     overlay_rgb_with_boxes = np.copy(cropped_rgb)
     for x1, y1, x2, y2 in bounding_boxes:
         cv2.rectangle(overlay_rgb_with_boxes, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw green bounding boxes
 
-    # Plot the overlayed RGB image with bounding boxes
     plt.figure(figsize=(10, 10))
     plt.imshow(overlay_rgb_with_boxes)
     plt.title(f'RGB Image with Vessel Entities and Bounding Boxes')
     plt.axis('off')
     plt.show()
-
-    print(f'Number of Vessel Entities: {num_vessels}')
+    log_step_status("Number of Vessel Entities", str(num_vessels), log_file)
 
     return
 
-
-
-
-
-
-           
-
-           
-            
-                        
-            
-            
-            
-            
-            
-            
-            
-            
-            
