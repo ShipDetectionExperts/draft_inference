@@ -223,7 +223,7 @@ def ship_detector(bbox, temporal_extent, threshold, min_size_threshold=2, kernel
     queried_bbox = BBox(bbox=bbox, crs=CRS.WGS84)
     queried_size = bbox_to_dimensions(queried_bbox, resolution=resolution)
 
-    evalscript_true_color = """
+    evalscript = """
     //VERSION=3
 function setup() {
   return {
@@ -249,8 +249,8 @@ function evaluatePixel(sample) {
 }
 """
 
-    request_true_color = SentinelHubRequest(
-        evalscript=evalscript_true_color,
+    request = SentinelHubRequest(
+        evalscript=evalscript,
         input_data=[
             SentinelHubRequest.input_data(
                 data_collection=DataCollection.SENTINEL2_L2A,
@@ -263,7 +263,7 @@ function evaluatePixel(sample) {
         config=config,
     )
 
-    bands_queried = request_true_color.get_data()
+    bands_queried = request.get_data()
     red, green, blue, nir = np.split(bands_queried[0], 4, axis=2)
 
     red = red.squeeze()
