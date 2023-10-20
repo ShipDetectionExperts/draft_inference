@@ -17,21 +17,6 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Conv2D, Activation, Add
 import cv2
 
-def calculate_ndwi(nir_band, green_band):
-    
-    nir_band_float = nir_band.astype(float)
-    green_band_float = green_band.astype(float)
-    
-    nir_band_float = np.nan_to_num(nir_band_float, nan=0.0)
-    green_band_float = np.nan_to_num(green_band_float, nan=0.0)
-    
-    # Replace zero values in the red band with a small positive value (1e-6)
-    nir_band_float[nir_band_float == 0] = 1e-6
-    green_band_float[green_band_float == 0] = 1e-6
-
-    
-    ndwi = (green_band_float - nir_band_float) / (green_band_float + nir_band_float)
-    return ndwi
 
 
 #%%
@@ -107,21 +92,6 @@ def true_color(red_band,green_band,blue_band):
 
 
 #%%
-def spatiotemp_img(blue_band, red_band):
-    # Convert input bands to float and handle invalid values
-    blue_band_float = blue_band.astype(float)
-    red_band_float = red_band.astype(float)
-
-    # Replace NaN and infinity values with zero
-    blue_band_float = np.nan_to_num(blue_band_float, nan=0.0)
-    red_band_float = np.nan_to_num(red_band_float, nan=0.0)
-    
-    # Replace zero values in the red band with a small positive value (1e-6)
-    red_band_float[red_band_float == 0] = 1e-6
-
-    img = blue_band_float / (red_band_float+blue_band_float)
-    
-    return img
 
 
 
@@ -435,9 +405,6 @@ def ship_detector(region_folder, threshold, min_size_threshold=2, kernel_erosion
     return
 
 
-            
-                        
-            
             
             
             
