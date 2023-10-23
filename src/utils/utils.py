@@ -1,13 +1,7 @@
+import fnmatch
 import os
-import argparse
-from urllib.error import HTTPError
-import time
 import datetime
-from PIL import Image
-from pystac import Catalog, Collection, Item, Asset
-from pystac.extensions.projection import ProjectionExtension
-from pystac.extensions.eo import EOExtension
-from pystac.extensions.file import FileExtension
+import pystac
 import geojson
 import json
 
@@ -160,22 +154,21 @@ def output_geojson(bounding_boxes):
             "type": "Feature",
             "geometry": {
                 "type": "Polygon",
-                "coordinates": [[
-                    [bbox[0], bbox[1]],
-                    [bbox[2], bbox[1]],
-                    [bbox[2], bbox[3]],
-                    [bbox[0], bbox[3]],
-                    [bbox[0], bbox[1]]
-                ]]
+                "coordinates": [
+                    [
+                        [bbox[0], bbox[1]],
+                        [bbox[2], bbox[1]],
+                        [bbox[2], bbox[3]],
+                        [bbox[0], bbox[3]],
+                        [bbox[0], bbox[1]],
+                    ]
+                ],
             },
-            "properties": {}
+            "properties": {},
         }
         features.append(feature)
 
-    feature_collection = {
-        "type": "FeatureCollection",
-        "features": features
-    }
+    feature_collection = {"type": "FeatureCollection", "features": features}
 
     filename = f"detections-{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.geojson"
     with open(filename, "w") as f:
@@ -184,33 +177,51 @@ def output_geojson(bounding_boxes):
     return feature_collection
 
 
-def add_to_stac_catalog(feature_collection):
-
-    catalog_path = os.path.join(os.getcwd())
-    if os.path.exists(catalog_path):
-        catalog = Catalog.from_file(catalog_path)
-    else:
-        catalog = Catalog(id="vessel-detection-catalog", description="Catalog of vessel detection results")
-
-    # Create a new STAC Item for the GeoJSON FeatureCollection
-    item_id = f"vessel-detection-{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}"
-    item = Item(id=item_id, geometry=None, bbox=None, datetime=None)
-    item.add_asset(
-        "vessel-detection-output",
-        Asset(href="vessel-detection-output.geojson", media_type="application/geo+json")
+def create_stac_catalog(BBOX):
+    """
+    Function to create a STAC catalogue for the bounding box
+    geojson file generated with the output_geojson function and
+    saved to the current workind directory.
+    """
+    catalog = pystac.Catalog(
+        id="ship-detection-results", description="Ship detection results description"
     )
 
-    # Add the GeoJSON FeatureCollection to the STAC Item
-    item.add_asset(
-        "vessel-detection-features",
-        Asset(href="vessel-detection-features.geojson", media_type="application/geo+json")
+    cwd = os.getcwd()
+
+    ship_file_name = None
+    for file_name in os.listdir(cwd):
+        if fnmatch.fnmatch(file_name, "detections-*.geojson"):
+            ship_file_name = file_name
+            break
+
+    if ship_file_name is None:
+        raise ValueError("Could not find GeoJSON file")
+
+    geojson_file = os.path.join(cwd, ship_file_name)
+
+    catalog.links.append(
+        pystac.Link(
+            rel="item",
+            target=os.path.abspath(os.path.join(cwd, ship_file_name)),
+            media_type=pystac.MediaType.JSON,
+        )
     )
 
-    # Add the STAC Item to the Catalog
-    catalog.add_item(item)
+    catalog.links.append(
+        pystac.Link(
+            rel="self", target=os.path.abspath(os.path.join(cwd, "catalog.json"))
+        )
+    )
 
-    # Save the updated Catalog to disk
-    catalog.normalize_and_save(catalog_path, strategy="move")
+    catalog_dict = catalog.to_dict()
+
+    output_file = os.path.join(cwd, "catalog.json")
+
+    with open(output_file, "w") as catalog_file:
+        json.dump(catalog_dict, catalog_file, indent=4)
+
+    return catalog_dict
 
 
 def calculate_ndwi(nir_band, green_band):
@@ -426,7 +437,7 @@ def ship_detector(data, threshold, min_size_threshold=10):
     patches, updated_shape = inference_tiles(dataset, tile_size=64)
 
     # Provide the path to the model file
-    model_path = "./draft_model/Multihead_Attention_UNet_model.h5"
+    model_path = os.path.abspath("./draft_model/Multihead_Attention_UNet_model.h5")
     model = tf.keras.models.load_model(
         model_path, custom_objects={"K": K}, compile=False
     )

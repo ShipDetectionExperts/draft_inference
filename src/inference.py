@@ -1,26 +1,15 @@
 import os
 import sys
-import logging
-import math
-import argparse
 
-from sentinelhub import (
-    BBox,
-    CRS,
-    DataCollection,
-    SentinelHubCatalog,
-    DownloadFailedException,
-    MimeType,
-    SentinelHubRequest,
-    SHConfig,
-    bbox_to_dimensions,
-)
+import argparse
+import time
+
 
 relative_paths = ["./utils", "./models", "./draft_model"]
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.extend(os.path.join(current_dir, rel_path) for rel_path in relative_paths)
 
-from utils import request_data_sh, ship_detector, output_geojson, add_to_stac_catalog
+from utils import request_data_sh, ship_detector, output_geojson, create_stac_catalog
 from utils import *
 from models import *
 
@@ -114,7 +103,9 @@ def main():
 
     feature_collection = output_geojson(bounding_boxes)
 
-    add_to_stac_catalog(feature_collection)
+    time.sleep(3)
+
+    stac_catalog = create_stac_catalog(BBOX)
 
 
 if __name__ == "__main__":
