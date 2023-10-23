@@ -21,7 +21,6 @@ $graph:
         outputSource:
           - ship-inference_step/results
         type: Directory
-        outputBinding: {}
     steps:
       - id: ship-inference_step
         in:
@@ -51,7 +50,7 @@ $graph:
     baseCommand:
       - python
       - /app/src/inference.py
-    label: performinference
+    label: perform inference
     doc: Run the inference script with input parameters
     inputs:
       - id: client_id
@@ -81,7 +80,8 @@ $graph:
     outputs:
       - id: results
         type: Directory
-        outputBinding: {}
+        outputBinding:
+          glob: .
     requirements:
       DockerRequirement:
         dockerPull: potato55/ship-detection:0.1
