@@ -85,8 +85,8 @@ Prefer: respond-async
     "client_secret": "i[dqq<C~-M{Iu~e_-]#9Yn8zi5RNc}-L>BgwOCh|",
     "bbox": "8.86116,44.381294,8.99128,44.421521",
     "time": "2022-11-01T00:00:00Z/2023-11-10T00:00:00Z",
-    "maxcc": "30",
-    "threshold": "0.25",
+    "maxcc": 30,
+    "threshold": 0.25,
   },
   "response": "raw"
 }

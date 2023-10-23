@@ -2,7 +2,6 @@ cwlVersion: v1.0
 $graph:
   - id: ship-detection-workflow
     class: Workflow
-    label: inferenceworkflow
     inputs:
       - id: client_id
         type: string
@@ -19,10 +18,10 @@ $graph:
     outputs:
       - id: wf_outputs
         outputSource:
-          - ship-inference_step/results
+          - ship-inference/results
         type: Directory
     steps:
-      - id: ship-inference_step
+      - id: ship-inference
         in:
           - id: client_id
             source:
@@ -50,8 +49,6 @@ $graph:
     baseCommand:
       - python
       - /app/src/inference.py
-    label: perform inference
-    doc: Run the inference script with input parameters
     inputs:
       - id: client_id
         type: string
@@ -84,7 +81,7 @@ $graph:
           glob: .
     requirements:
       DockerRequirement:
-        dockerPull: potato55/ship-detection:0.1
+        dockerPull: potato55/ship-detection:0.4
 $namespaces:
   s: https://schema.org/
 s:softwareVersion: 0.0.1
