@@ -1,18 +1,8 @@
-import os
-import sys
-
 import argparse
 import time
-
-
-relative_paths = ["./utils", "./models", "./draft_model"]
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.extend(os.path.join(current_dir, rel_path) for rel_path in relative_paths)
-
 from utils import request_data_sh, ship_detector, output_geojson, create_stac_catalog
 from utils import *
 from models import *
-
 import argparse
 
 args = None

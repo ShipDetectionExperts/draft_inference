@@ -437,12 +437,12 @@ def ship_detector(data, threshold, min_size_threshold=10):
     patches, updated_shape = inference_tiles(dataset, tile_size=64)
 
     # Provide the path to the model file
-    model_path = "./src/utils/Multihead_Attention_UNet_model.h5"
+    model_path = "Multihead_Attention_UNet_model.h5"
     print(f"Loading model from: {model_path}")
     model = tf.keras.models.load_model(
         model_path, custom_objects={"K": K}, compile=False
     )
-
+    
     binary_masks = []
 
     for idx, patch in enumerate(patches):

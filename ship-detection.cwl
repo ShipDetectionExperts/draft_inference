@@ -48,7 +48,7 @@ $graph:
     class: CommandLineTool
     baseCommand:
       - python
-      - /app/src/inference.py
+      - /app/inference.py
     inputs:
       - id: client_id
         type: string
@@ -81,7 +81,7 @@ $graph:
           glob: .
     requirements:
       DockerRequirement:
-        dockerPull: potato55/ship-detection:0.4
+        dockerPull: potato55/ship-detection:0.5
 $namespaces:
   s: https://schema.org/
 s:softwareVersion: 0.0.1
