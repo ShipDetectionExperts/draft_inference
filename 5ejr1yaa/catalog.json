@@ -1,0 +1,22 @@
+{
+    "type": "Catalog",
+    "id": "ship-detection-results",
+    "stac_version": "1.0.0",
+    "description": "Ship detection results description",
+    "links": [
+        {
+            "rel": "root",
+            "href": "/gOffge/catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "item",
+            "href": "/gOffge/detections-20231024T124840.geojson",
+            "type": "application/json"
+        },
+        {
+            "rel": "self",
+            "href": "/gOffge/catalog.json"
+        }
+    ]
+}

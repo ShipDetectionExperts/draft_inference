@@ -81,7 +81,7 @@ $graph:
           glob: .
     requirements:
       DockerRequirement:
-        dockerPull: potato55/ship-detection:0.5
+        dockerPull: potato55/ship-detection:latest
 $namespaces:
   s: https://schema.org/
 s:softwareVersion: 0.0.1
