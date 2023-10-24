@@ -81,8 +81,8 @@ Prefer: respond-async
 
 {
   "inputs": {
-    "client_id": "",
-    "client_secret": "",
+    "client_id": "fbe1bd3f-9502-43b2-b822-9a8c7f8a6ae0",
+    "client_secret": "i[dqq<C~-M{Iu~e_-]#9Yn8zi5RNc}-L>BgwOCh|",
     "bbox": "8.86116,44.381294,8.99128,44.421521",
     "time": "2022-11-01T00:00:00Z/2023-11-10T00:00:00Z",
     "maxcc": 30,
