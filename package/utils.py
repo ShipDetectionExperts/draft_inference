@@ -5,6 +5,7 @@ import pystac
 import geojson
 import json
 
+
 from sentinelhub import (
     BBox,
     SentinelHubCatalog,

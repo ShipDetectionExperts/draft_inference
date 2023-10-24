@@ -84,7 +84,7 @@ $graph:
         dockerPull: potato55/ship-detection:latest
 $namespaces:
   s: https://schema.org/
-s:softwareVersion: 0.0.1
+s:softwareVersion: 0.0.2
 s:dateCreated: '2023-10-23'
 s:keywords: ship detection, machine learning, ap
 s:contributor:

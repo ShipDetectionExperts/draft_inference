@@ -1,9 +1,15 @@
 import argparse
 import time
+import os 
 from utils import request_data_sh, ship_detector, output_geojson, create_stac_catalog
 from utils import *
 from models import *
 import argparse
+
+
+os.environ['KERAS_HOME'] = '/non_existent_directory'
+os.environ['MPLCONFIGDIR'] = '/non_existent_directory'
+os.environ['SH_CONFIG_PATH'] = '/non_existent_directory'
 
 args = None
 INSTANCE_ID = None
@@ -96,7 +102,6 @@ def main():
     time.sleep(3)
 
     stac_catalog = create_stac_catalog(BBOX)
-
 
 if __name__ == "__main__":
     main()
