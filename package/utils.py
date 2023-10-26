@@ -204,14 +204,14 @@ def create_stac_catalog(BBOX):
     catalog.links.append(
         pystac.Link(
             rel="item",
-            target=os.path.abspath(os.path.join(cwd, ship_file_name)),
+            target=os.path.relpath(os.path.join(cwd, ship_file_name)),
             media_type=pystac.MediaType.JSON,
         )
     )
 
     catalog.links.append(
         pystac.Link(
-            rel="self", target=os.path.abspath(os.path.join(cwd, "catalog.json"))
+            rel="self", target=os.path.relpath(os.path.join(cwd, "catalog.json"))
         )
     )
 
