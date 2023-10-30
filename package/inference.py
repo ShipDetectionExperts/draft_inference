@@ -5,6 +5,7 @@ from utils import request_data_sh, ship_detector, output_geojson, create_stac_ca
 from utils import *
 from models import *
 import argparse
+from stac_cat_utils.stac_generator import StacCatalogGenerator
 
 
 os.environ['KERAS_HOME'] = '/non_existent_directory'
@@ -101,7 +102,26 @@ def main():
 
     time.sleep(3)
 
-    stac_catalog = create_stac_catalog(BBOX)
+    stac_gen = StacCatalogGenerator()
+
+    src_path = os.getcwd()
+
+    ignored_paths = [
+        f'{src_path}/__pycache__',
+        f'{src_path}/ship-detec',
+        f'{src_path}/Multihead_Attention_UNet_model.h5',
+        f'{src_path}/models.py',
+        f'{src_path}/utils.py',
+        f'{src_path}/inference.py',
+        f'{src_path}/requirements_prod.txt',
+    ]
+
+    catalog = stac_gen.create(src_path, ignore_paths=ignored_paths,
+                              collection_paths=src_path,
+                              item_paths=[f'{src_path}/detections*.geojson'])
+
+    stac_gen.save(dest_path='catalog')
+
 
 if __name__ == "__main__":
     main()
