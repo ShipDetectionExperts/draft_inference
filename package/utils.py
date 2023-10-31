@@ -439,7 +439,7 @@ def ship_detector(data, threshold, min_size_threshold=10):
 
     # Provide the path to the model file
     print(f'Current working DIR before loading the model: {os.getcwd()}')
-    model_path = "Multihead_Attention_UNet_model.h5"
+    model_path = "/app/Multihead_Attention_UNet_model.h5"
     print(f"Loading model from: {model_path}")
     model = tf.keras.models.load_model(
         model_path, custom_objects={"K": K}, compile=False

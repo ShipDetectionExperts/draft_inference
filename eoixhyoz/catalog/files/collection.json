@@ -1,0 +1,136 @@
+{
+  "type": "Collection",
+  "id": "files",
+  "stac_version": "1.0.0",
+  "description": "Collection of generic files",
+  "links": [
+    {
+      "rel": "root",
+      "href": "../catalog.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "item",
+      "href": "./detections-20231031T073834.geojson/detections-20231031T073834.geojson.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "parent",
+      "href": "../catalog.json",
+      "type": "application/json"
+    }
+  ],
+  "extent": {
+    "spatial": {
+      "bbox": [
+        [
+          Infinity,
+          Infinity,
+          -Infinity,
+          -Infinity
+        ]
+      ]
+    },
+    "temporal": {
+      "interval": [
+        [
+          "2023-10-31T07:38:37.106416Z",
+          "2023-10-31T07:38:37.106416Z"
+        ]
+      ]
+    }
+  },
+  "license": "proprietary",
+  "assets": {
+    "/ifIkRf/.config/sentinelhub/config.toml": {
+      "href": "/ifIkRf/.config/sentinelhub/config.toml",
+      "type": [
+        null,
+        null
+      ],
+      "title": "/ifIkRf/.config/sentinelhub/config.toml",
+      "Creation": "2023-10-31 07:38",
+      "roles": [
+        "data"
+      ]
+    },
+    "/ifIkRf/.cache/matplotlib/fontlist-v330.json": {
+      "href": "/ifIkRf/.cache/matplotlib/fontlist-v330.json",
+      "type": "application/json",
+      "title": "/ifIkRf/.cache/matplotlib/fontlist-v330.json",
+      "Creation": "2023-10-31 07:38",
+      "roles": [
+        "data"
+      ]
+    },
+    "/ifIkRf/.cache/fontconfig/4c599c202bc5c08e2d34565a40eac3b2-le64.cache-8": {
+      "href": "/ifIkRf/.cache/fontconfig/4c599c202bc5c08e2d34565a40eac3b2-le64.cache-8",
+      "type": [
+        null,
+        null
+      ],
+      "title": "/ifIkRf/.cache/fontconfig/4c599c202bc5c08e2d34565a40eac3b2-le64.cache-8",
+      "Creation": "2023-10-31 07:38",
+      "roles": [
+        "data"
+      ]
+    },
+    "/ifIkRf/.cache/fontconfig/3830d5c3ddfd5cd38a049b759396e72e-le64.cache-8": {
+      "href": "/ifIkRf/.cache/fontconfig/3830d5c3ddfd5cd38a049b759396e72e-le64.cache-8",
+      "type": [
+        null,
+        null
+      ],
+      "title": "/ifIkRf/.cache/fontconfig/3830d5c3ddfd5cd38a049b759396e72e-le64.cache-8",
+      "Creation": "2023-10-31 07:38",
+      "roles": [
+        "data"
+      ]
+    },
+    "/ifIkRf/.cache/fontconfig/7ef2298fde41cc6eeb7af42e48b7d293-le64.cache-8": {
+      "href": "/ifIkRf/.cache/fontconfig/7ef2298fde41cc6eeb7af42e48b7d293-le64.cache-8",
+      "type": [
+        null,
+        null
+      ],
+      "title": "/ifIkRf/.cache/fontconfig/7ef2298fde41cc6eeb7af42e48b7d293-le64.cache-8",
+      "Creation": "2023-10-31 07:38",
+      "roles": [
+        "data"
+      ]
+    },
+    "/ifIkRf/.cache/fontconfig/d589a48862398ed80a3d6066f4f56f4c-le64.cache-8": {
+      "href": "/ifIkRf/.cache/fontconfig/d589a48862398ed80a3d6066f4f56f4c-le64.cache-8",
+      "type": [
+        null,
+        null
+      ],
+      "title": "/ifIkRf/.cache/fontconfig/d589a48862398ed80a3d6066f4f56f4c-le64.cache-8",
+      "Creation": "2023-10-31 07:38",
+      "roles": [
+        "data"
+      ]
+    },
+    "/ifIkRf/.cache/fontconfig/CACHEDIR.TAG": {
+      "href": "/ifIkRf/.cache/fontconfig/CACHEDIR.TAG",
+      "type": [
+        "text/prs.lines.tag",
+        null
+      ],
+      "title": "/ifIkRf/.cache/fontconfig/CACHEDIR.TAG",
+      "Creation": "2023-10-31 07:38",
+      "roles": [
+        "data"
+      ]
+    },
+    "/ifIkRf/.keras/keras.json": {
+      "href": "/ifIkRf/.keras/keras.json",
+      "type": "application/json",
+      "title": "/ifIkRf/.keras/keras.json",
+      "Creation": "2023-10-31 07:38",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}
