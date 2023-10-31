@@ -120,7 +120,7 @@ def main():
                               collection_paths=src_path,
                               item_paths=[f'{src_path}/detections*.geojson'])
 
-    stac_gen.save(dest_path='catalog')
+    stac_gen.save(dest_path='.')
 
 
 if __name__ == "__main__":
