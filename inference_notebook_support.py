@@ -293,7 +293,7 @@ def ship_detector(region_folder, threshold, min_size_threshold=2, kernel_erosion
     patches, updated_shape = inference_tiles(dataset, tile_size= 64)
 
         # Provide the path to the model file
-    model_path = 'drafts/best_Multihead_Attention_UNet_model/Multihead_Attention_UNet_model.h5'
+    model_path = 'draft_model/Multihead_Attention_UNet_model.h5'
     model = tf.keras.models.load_model(model_path,custom_objects={"K": K}, compile=False)
 
     binary_masks = []
