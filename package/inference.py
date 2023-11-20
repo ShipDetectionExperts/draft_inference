@@ -114,14 +114,23 @@ def main():
         f'{src_path}/utils.py',
         f'{src_path}/inference.py',
         f'{src_path}/requirements_prod.txt',
+        f'{src_path}/.config',
+        f'{src_path}/.keras',
+        f'{src_path}/.cache',
+        f'{src_path}/venv',
+        f'{src_path}/__init__.py',
     ]
 
     catalog = stac_gen.create(src_path, ignore_paths=ignored_paths,
                               collection_paths=src_path,
-                              item_paths=[f'{src_path}/detections*.geojson'])
+                              item_paths=[f'{src_path}/detections*.geojson'],
+                              asset_href_prefix='.')
 
+    #catalog.make_all_asset_hrefs_relative()
     stac_gen.save(dest_path='.')
 
 
 if __name__ == "__main__":
     main()
+
+
