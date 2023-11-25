@@ -1,0 +1,5 @@
+Client ID: 28b93353-2a99-465c-ba31-17dd7a678c19
+Client secret: lSCv3fw3zFZrfmb-r]#isPhd9pXm<4%:>w<EnoL}
+--instance_id "3351e37b-2a68-4205-88e4-e8f3553e7924"
+
+cwltool ship-detection.cwl#ship-detection-workflow --client_id "28b93353-2a99-465c-ba31-17dd7a678c19" --client_secret "lSCv3fw3zFZrfmb-r]#isPhd9pXm<4%:>w<EnoL}" --bbox "13.4,52.5,13.6,52.7"  --time "2021-05/2021-08" --maxcc 20 --threshold 0.2

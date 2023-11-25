@@ -1,16 +1,17 @@
 import argparse
 import time
-import os 
-from utils import request_data_sh, ship_detector, output_geojson, create_stac_catalog
-from utils import *
+import os
+from model_utils import ship_detector
+from model_utils import *
 from models import *
-import argparse
-from stac_cat_utils.stac_generator import StacCatalogGenerator
+from package_utils import request_data_sh, output_geojson, to_stac_catalog, get_detection_file
 
 
 os.environ['KERAS_HOME'] = '/non_existent_directory'
 os.environ['MPLCONFIGDIR'] = '/non_existent_directory'
 os.environ['SH_CONFIG_PATH'] = '/non_existent_directory'
+
+
 
 args = None
 INSTANCE_ID = None
@@ -21,9 +22,6 @@ BBOX = None
 TIME = None
 MAX_CC = None
 THRESHOLD = None
-
-
-# TODO: CHECK IF THE BANDS ARE BEING CORRECTLY LOADED AND USED BY THE SHIP DETECTION FUNCTION
 
 
 def setup_argparse():
@@ -59,19 +57,33 @@ def setup_argparse():
         "--bbox",
         type=str,
         default="13.4,52.5,13.6,52.7",
+        nargs="?",
+        const=1,
         help="Bounding box in the format minx,miny,maxx,maxy",
     )
     args.add_argument(
         "--time",
         type=str,
         default="2021-05/2021-08",
+        nargs="?",
+        const=1,
         help="Time range of the image in the format YYYY-MM/YYYY-MM",
     )
     args.add_argument(
-        "--maxcc", type=int, default=20, help="Maximum cloud cover percentage"
+        "--maxcc", 
+        type=int,
+        default=20,
+        nargs="?",
+        const=1, 
+        help="Maximum cloud cover percentage"
     )
     args.add_argument(
-        "--threshold", type=float, default=0.5, help="Threshold for inference"
+        "--threshold",
+        type=float,
+        default=0.5,
+        nargs="?",
+        const=1,
+        help="Threshold for inference"
     )
     args = args.parse_args()
 
@@ -92,6 +104,8 @@ def setup_argparse():
 
 
 def main():
+
+    start_time = time.perf_counter()
     setup_argparse()
 
     data = request_data_sh(CLIENT_ID, CLIENT_SECRET, BBOX, TIME, MAX_CC)
@@ -102,32 +116,16 @@ def main():
 
     time.sleep(3)
 
-    stac_gen = StacCatalogGenerator()
-
     src_path = os.getcwd()
 
-    ignored_paths = [
-        f'{src_path}/__pycache__',
-        f'{src_path}/ship-detec',
-        f'{src_path}/Multihead_Attention_UNet_model.h5',
-        f'{src_path}/models.py',
-        f'{src_path}/utils.py',
-        f'{src_path}/inference.py',
-        f'{src_path}/requirements_prod.txt',
-        f'{src_path}/.config',
-        f'{src_path}/.keras',
-        f'{src_path}/.cache',
-        f'{src_path}/venv',
-        f'{src_path}/__init__.py',
-    ]
+    latest_file = get_detection_file()
 
-    catalog = stac_gen.create(src_path, ignore_paths=ignored_paths,
-                              collection_paths=src_path,
-                              item_paths=[f'{src_path}/detections*.geojson'],
-                              asset_href_prefix='.')
+    stac_catalog = to_stac_catalog(feature_collection, latest_file)
 
-    #catalog.make_all_asset_hrefs_relative()
-    stac_gen.save(dest_path='.')
+    end_time = time.perf_counter()
+
+    print(f"Time taken to run the application: {end_time - start_time} seconds")
+    print(f'Created STAC catalog, {stac_catalog} at {src_path}')
 
 
 if __name__ == "__main__":

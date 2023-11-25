@@ -2,7 +2,7 @@ ship-detection/
 __pycache__/
 ship-detec/
 
-venv/
+.venv/
 
 blue.tiff
 green.tiff

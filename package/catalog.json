@@ -1,0 +1,21 @@
+{
+  "type": "Catalog",
+  "id": "detections-20231125T165425",
+  "stac_version": "1.0.0",
+  "description": "Ship Detections",
+  "links": [
+    {
+      "rel": "root",
+      "href": "./catalog.json",
+      "type": "application/json",
+      "title": "1.0.0"
+    },
+    {
+      "rel": "item",
+      "href": "./detections-20231125T165425-20231125T165428106035/detections-20231125T165425-20231125T165428106035.json",
+      "type": "application/json"
+    }
+  ],
+  "stac_extensions": "A catalog of ship detections",
+  "title": "1.0.0"
+}
