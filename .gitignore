@@ -11,4 +11,8 @@ nir.tiff
 image.tiff
 image.npy
 
-test_requests.txt
+requests.txt
+# Related to CWL tool output
+.cache
+.config
+.keras

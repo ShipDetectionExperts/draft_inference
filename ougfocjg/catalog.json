@@ -1,6 +1,6 @@
 {
   "type": "Catalog",
-  "id": "detections-20231125T165425",
+  "id": "detections-20231129T174318",
   "stac_version": "1.0.0",
   "description": "Ship Detections",
   "links": [
@@ -12,7 +12,7 @@
     },
     {
       "rel": "item",
-      "href": "./detections-20231125T165425-20231125T165428106035/detections-20231125T165425-20231125T165428106035.json",
+      "href": "./detections-20231129T174318-20231129T174321149658/detections-20231129T174318-20231129T174321149658.json",
       "type": "application/json"
     }
   ],

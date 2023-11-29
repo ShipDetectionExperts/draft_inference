@@ -1,9 +1,9 @@
 {
   "type": "Feature",
   "stac_version": "1.0.0",
-  "id": "detections-20231125T165425-20231125T165428106035",
+  "id": "detections-20231129T174318-20231129T174321149658",
   "properties": {
-    "datetime": "2023-11-25T16:54:28.106067Z"
+    "datetime": "2023-11-29T17:43:21.149698Z"
   },
   "geometry": {
     "type": "MultiPolygon",
